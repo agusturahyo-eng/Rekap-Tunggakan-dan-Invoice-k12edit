@@ -11,7 +11,8 @@
 <style>
 body{background:#f4f6f9; font-family: sans-serif;}
 .clickable{cursor:pointer; user-select: none;}
-tr:hover{background:#eef3ff}
+/* Warna saat baris di-hover */
+tr:hover{background-color: #d1e7ff !important;}
 .table-primary th:hover { background-color: #0d6efd !important; color: white; }
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
@@ -19,6 +20,12 @@ tr:hover{background:#eef3ff}
 .bg-belum { background-color: #dc3545 !important; color: white; }
 .bg-lunas { background-color: #198754 !important; color: white; }
 .bg-total { background-color: #0d6efd !important; color: white; }
+
+/* --- TAMBAHAN WARNA SELANG SELING --- */
+tbody tr:nth-child(odd) { background-color: #ffffff; }
+tbody tr:nth-child(even) { background-color: #f2f2f2; }
+/* Memastikan baris 'SEMUA' tetap mencolok */
+.table-info { background-color: #cff4fc !important; }
 </style>
 </head>
 <body>
@@ -56,7 +63,6 @@ const parseDate = (str) => {
   return new Date(parts[2], parts[1] - 1, parts[0]);
 };
 
-// PERBAIKAN: Logika isLunas disesuaikan dengan isi sheet (LUNAS jika bukan "BELUMLUNAS")
 const isLunas = r => {
   if (!r.tgl_lunas) return false;
   const status = r.tgl_lunas.trim().toUpperCase();
