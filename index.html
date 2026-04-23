@@ -11,8 +11,29 @@
 <style>
 body{background:#f4f6f9; font-family: sans-serif;}
 .clickable{cursor:pointer; user-select: none;}
-/* Warna saat baris di-hover */
-tr:hover{background-color: #d1e7ff !important;}
+
+/* --- CSS UNTUK WARNA SELANG SELING (ZEBRA STRIPES) --- */
+/* Baris Ganjil: Putih */
+table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff !important;
+}
+
+/* Baris Genap: Abu-abu Muda */
+table tbody tr:nth-of-type(even) {
+    background-color: #f9f9f9 !important;
+}
+
+/* Warna khusus untuk baris SEMUA agar tetap beda sendiri */
+.row-semua {
+    background-color: #cff4fc !important;
+    font-weight: bold;
+}
+
+/* Warna saat baris disentuh kursor (Hover) */
+table tbody tr:hover {
+    background-color: #e2eafc !important;
+}
+
 .table-primary th:hover { background-color: #0d6efd !important; color: white; }
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
@@ -20,12 +41,6 @@ tr:hover{background-color: #d1e7ff !important;}
 .bg-belum { background-color: #dc3545 !important; color: white; }
 .bg-lunas { background-color: #198754 !important; color: white; }
 .bg-total { background-color: #0d6efd !important; color: white; }
-
-/* --- TAMBAHAN WARNA SELANG SELING --- */
-tbody tr:nth-child(odd) { background-color: #ffffff; }
-tbody tr:nth-child(even) { background-color: #f2f2f2; }
-/* Memastikan baris 'SEMUA' tetap mencolok */
-.table-info { background-color: #cff4fc !important; }
 </style>
 </head>
 <body>
@@ -161,7 +176,7 @@ function renderPetugas() {
       <tr><th rowspan="2" class="align-middle">Petugas</th><th colspan="2" class="bg-belum">Belum Lunas</th><th colspan="2" class="bg-lunas">Lunas</th><th colspan="2" class="bg-total">Total</th></tr>
       <tr><th class="bg-belum">Plg</th><th class="bg-belum">Rp</th><th class="bg-lunas">Plg</th><th class="bg-lunas">Rp</th><th class="bg-total">Plg</th><th class="bg-total">Rp</th></tr>
     </thead><tbody>
-    <tr class="table-info clickable fw-bold" onclick="openGlobal()"><td>SEMUA</td><td>${tot.bP}</td><td class="text-end">${tot.bR.toLocaleString("id-ID")}</td><td>${tot.lP}</td><td class="text-end">${tot.lR.toLocaleString("id-ID")}</td><td>${tot.tP}</td><td class="text-end">${tot.tR.toLocaleString("id-ID")}</td></tr>`;
+    <tr class="clickable row-semua" onclick="openGlobal()"><td>SEMUA</td><td>${tot.bP}</td><td class="text-end">${tot.bR.toLocaleString("id-ID")}</td><td>${tot.lP}</td><td class="text-end">${tot.lR.toLocaleString("id-ID")}</td><td>${tot.tP}</td><td class="text-end">${tot.tR.toLocaleString("id-ID")}</td></tr>`;
   sorted.forEach(p => { const d = map[p]; h += `<tr class="clickable" onclick="openPetugas('${p}')"><td class="text-start">${p}</td><td>${d.bP}</td><td class="text-end">${d.bR.toLocaleString("id-ID")}</td><td>${d.lP}</td><td class="text-end">${d.lR.toLocaleString("id-ID")}</td><td>${d.tP}</td><td class="text-end">${d.tR.toLocaleString("id-ID")}</td></tr>`; });
   view.innerHTML = h + `</tbody></table></div>`;
 }
