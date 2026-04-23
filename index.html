@@ -15,7 +15,6 @@ tr:hover{background:#eef3ff}
 .table-primary th:hover { background-color: #0d6efd !important; color: white; }
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
-/* Style tambahan agar mirip gambar */
 .header-rekap th { vertical-align: middle; text-align: center; font-size: 0.8rem; }
 .bg-belum { background-color: #dc3545 !important; color: white; }
 .bg-lunas { background-color: #198754 !important; color: white; }
@@ -52,12 +51,17 @@ const parseIDR = (val) => {
 };
 
 const parseDate = (str) => {
-  if (!str || str === "-") return new Date(0);
+  if (!str || str === "-" || str === "BELUMLUNAS") return new Date(0);
   const parts = str.split('-');
   return new Date(parts[2], parts[1] - 1, parts[0]);
 };
 
-const isLunas = r => r.tgl_lunas && r.tgl_lunas.trim() !== "" && r.tgl_lunas !== "-";
+// PERBAIKAN: Logika isLunas disesuaikan dengan isi sheet (LUNAS jika bukan "BELUMLUNAS")
+const isLunas = r => {
+  if (!r.tgl_lunas) return false;
+  const status = r.tgl_lunas.trim().toUpperCase();
+  return status !== "BELUMLUNAS" && status !== "" && status !== "-";
+};
 
 function loadSheet(k) {
   currentSheet = k; 
@@ -131,7 +135,6 @@ function createPDF(r) {
   doc.save(`TUL_${r.idpel}.pdf`);
 }
 
-/* ================= ALUR DATA PERBAIKAN SESUAI GAMBAR ================= */
 function renderPetugas() {
   const map = {};
   let tot = { bP: 0, bR: 0, lP: 0, lR: 0, tP: 0, tR: 0 };
@@ -139,8 +142,11 @@ function renderPetugas() {
     let p = r.petugas || "Tanpa Nama";
     if (!map[p]) map[p] = { bP: 0, bR: 0, lP: 0, lR: 0, tP: 0, tR: 0 };
     let rp = parseIDR(r.jumlah);
-    if (isLunas(r)) { map[p].lP++; map[p].lR += rp; tot.lP++; tot.lR += rp; }
-    else { map[p].bP++; map[p].bR += rp; tot.bP++; tot.bR += rp; }
+    if (isLunas(r)) { 
+      map[p].lP++; map[p].lR += rp; tot.lP++; tot.lR += rp; 
+    } else { 
+      map[p].bP++; map[p].bR += rp; tot.bP++; tot.bR += rp; 
+    }
     map[p].tP++; map[p].tR += rp; tot.tP++; tot.tR += rp;
   });
   const sorted = Object.keys(map).sort();
@@ -193,7 +199,7 @@ function drawTable(data) {
   window.triggerSort = (key) => {
     if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
     const sorted = [...data].sort((a, b) => {
-      let v1 = a[key] || "", v2 = b[key] || "";
+      let v1 = a[key] || ""; let v2 = b[key] || "";
       if (key === 'jumlah') return sortState.asc ? parseIDR(v1) - parseIDR(v2) : parseIDR(v2) - parseIDR(v1);
       return sortState.asc ? String(v1).localeCompare(String(v2), undefined, {numeric: true}) : String(v2).localeCompare(String(v1), undefined, {numeric: true});
     });
