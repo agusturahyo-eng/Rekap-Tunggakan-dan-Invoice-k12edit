@@ -12,21 +12,19 @@
     body{background:#f4f6f9; font-family: sans-serif;}
     .clickable{cursor:pointer; user-select: none;}
 
-    /* --- PERBAIKAN WARNA ZEBRA (SELANG-SELING) --- */
-    /* Menghapus pengaruh striped bawaan bootstrap */
-    .table-custom tbody tr:nth-of-type(odd) {
+    /* --- FIX WARNA ZEBRA (STRIPED) --- */
+    .table-zebra tbody tr:nth-of-type(odd) {
         background-color: #ffffff !important;
     }
-    .table-custom tbody tr:nth-of-type(even) {
-        background-color: #f2f7fb !important; /* Warna abu-abu kebiruan lembut */
+    .table-zebra tbody tr:nth-of-type(even) {
+        background-color: #f1f6f9 !important;
     }
-    /* Warna khusus baris SEMUA */
     .row-semua {
-        background-color: #e0f7fa !important;
+        background-color: #d1ecf1 !important;
         font-weight: bold;
     }
-    #view table tbody tr:hover {
-        background-color: #d1e7ff !important;
+    .table-zebra tbody tr:hover {
+        background-color: #e2e6ea !important;
     }
 
     .header-rekap th { vertical-align: middle; text-align: center; font-size: 0.8rem; border: 1px solid #dee2e6; }
@@ -34,17 +32,17 @@
     .bg-lunas { background-color: #198754 !important; color: white; }
     .bg-total { background-color: #0d6efd !important; color: white; }
     .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <div class="container my-3">
-    <ul class="nav nav-tabs mb-3">
-      <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
-      <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
-      <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
+    <ul class="nav nav-tabs mb-3" id="mainTabs">
+      <li class="nav-item"><a class="nav-link active" id="tab-lembar1" href="#" onclick="loadSheet('lembar1')">Lembar 1</a></li>
+      <li class="nav-item"><a class="nav-link" id="tab-lembar2" href="#" onclick="loadSheet('lembar2')">Lembar 2</a></li>
+      <li class="nav-item"><a class="nav-link" id="tab-lembar3" href="#" onclick="loadSheet('lembar3')">Lembar 3</a></li>
     </ul>
-    <h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
+    <h4 class="text-center text-primary mb-1">⚡ Rekap Tunggakan ULP Tulung</h4>
+    <p class="text-center text-muted small mb-3">PT PLN (Persero) UP3 Klaten</p>
     <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
     <div id="view"></div>
 </div>
@@ -72,41 +70,56 @@ const isLunas = r => {
   return s !== "BELUMLUNAS" && s !== "" && s !== "-";
 };
 
-// --- LOGIKA WA & PDF SESUAI DATA TEKNIS ---
-const getFullText = (r, type) => {
+// --- DATA PDF & WA FULL VERSION ---
+const getFullData = (r) => {
   const d = new Date();
   const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
   const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
   const blnIni = `${nBulanShort[d.getMonth()]}-${d.getFullYear()}`;
   const blnLalu = d.getMonth() === 0 ? `DES-${d.getFullYear()-1}` : `${nBulanShort[d.getMonth()-1]}-${d.getFullYear()}`;
-  let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni}` : `${blnLalu} s/d ${blnIni}`;
+  let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni} (1 Lembar)` : `${blnLalu} s/d ${blnIni} (2 Lembar)`;
   
-  const b1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
-  const b3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar.";
-
-  if (type === 'WA') {
-    return encodeURIComponent("*PT. PLN (PERSERO) ULP TULUNG*\n*PEMBERITAHUAN PEMUTUSAN SEMENTARA*\n\n*Nama* : " + r.nama + "\n*IDPEL* : " + r.idpel + "\n*Alamat* : " + (r.alamat || '-') + "\n*Tarip/Daya* : " + r.tarif + "/" + r.daya + "\n\n*Rekening* : " + periode + "\n*Total Rp* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" + b1 + "\n\n" + b3);
-  }
-  return { periode, blnIni, b1, b3, tgl: `${d.getDate()} ${nBulanFull[d.getMonth()]} ${d.getFullYear()}` };
+  const narasi = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan. Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi.";
+  
+  return { 
+    periode, blnIni, narasi, 
+    tglCetak: `${d.getDate()} ${nBulanFull[d.getMonth()]} ${d.getFullYear()}`,
+    rpTag: parseIDR(r.rptag || 0).toLocaleString("id-ID"),
+    rpBk: parseIDR(r.rpbk || 0).toLocaleString("id-ID"),
+    rpTotal: parseIDR(r.jumlah || 0).toLocaleString("id-ID")
+  };
 };
 
 function createPDF(r) {
   const doc = new jsPDF();
-  const info = getFullText(r, 'PDF');
-  doc.setFontSize(8); doc.text("PT. PLN (PERSERO) ULP TULUNG", 15, 15);
+  const info = getFullData(r);
+  doc.setFontSize(8); doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY\nUP3 KLATEN - ULP TULUNG", 15, 15);
   doc.setFont(undefined, 'bold'); doc.setFontSize(10);
   doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA", 105, 30, {align: "center"});
   doc.setFont(undefined, 'normal'); doc.setFontSize(9);
-  doc.text(`ID Pelanggan : ${r.idpel}`, 15, 45);
-  doc.text(`Nama         : ${r.nama}`, 15, 50);
-  doc.text(`Tarip / Daya : ${r.tarif} / ${r.daya}`, 15, 55);
+  doc.text(`Nama         : ${r.nama}`, 15, 45);
+  doc.text(`ID Pelanggan : ${r.idpel}`, 15, 50);
+  doc.text(`Tarip/Daya   : ${r.tarif}/${r.daya}`, 15, 55);
+  doc.text(`Koked        : ${r.koked}`, 120, 50);
   doc.text(`Alamat       : ${r.alamat || '-'}`, 15, 60);
-  doc.text(`Total Tagihan: Rp ${parseIDR(r.jumlah).toLocaleString("id-ID")}`, 15, 70);
-  doc.text(doc.splitTextToSize(info.b1, 180), 15, 85);
-  doc.text(`Tulung, ${info.tgl}`, 140, 120);
-  doc.text("MANAGER", 150, 125);
-  doc.text("MARTONO AJI PRABOWO", 140, 145);
-  doc.save(`TUL_${r.idpel}.pdf`);
+  doc.line(15, 65, 195, 65);
+  doc.text(`Rekening     : ${info.periode}`, 15, 75);
+  doc.text(`Rupiah Tag   : Rp ${info.rpTag}`, 15, 80);
+  doc.text(`Biaya BK     : Rp ${info.rpBk}`, 15, 85);
+  doc.setFont(undefined, 'bold');
+  doc.text(`TOTAL TAGIHAN: Rp ${info.rpTotal}`, 15, 95);
+  doc.setFont(undefined, 'normal'); doc.setFontSize(8);
+  doc.text(doc.splitTextToSize(info.narasi, 180), 15, 110);
+  doc.text(`Tulung, ${info.tglCetak}`, 140, 150);
+  doc.text("MANAGER", 150, 155);
+  doc.text("MARTONO AJI PRABOWO", 140, 180);
+  doc.save(`Tunggakan_${r.idpel}.pdf`);
+}
+
+function sendWA(r) {
+  const info = getFullData(r);
+  const txt = encodeURIComponent(`*PT PLN (PERSERO) ULP TULUNG*\n\n*PEMBERITAHUAN PEMUTUSAN*\nNama: ${r.nama}\nIDPEL: ${r.idpel}\nTarif/Daya: ${r.tarif}/${r.daya}\nKoked: ${r.koked}\n\n*Total: Rp ${info.rpTotal}*\nPeriode: ${info.periode}\n\n${info.narasi}`);
+  window.open(`https://wa.me/?text=${txt}`, '_blank');
 }
 
 function loadSheet(k) {
@@ -136,7 +149,7 @@ function renderPetugas() {
     else { map[p].bP++; map[p].bR += rp; tot.bP++; tot.bR += rp; }
     map[p].tP++; map[p].tR += rp; tot.tP++; tot.tR += rp;
   });
-  let h = `<div class="table-responsive"><table class="table table-bordered table-sm text-center table-custom" style="font-size:0.8rem">
+  let h = `<div class="table-responsive"><table class="table table-bordered table-sm text-center table-zebra" style="font-size:0.8rem">
     <thead class="table-dark header-rekap">
       <tr><th rowspan="2">Petugas</th><th colspan="2" class="bg-belum">Belum Lunas</th><th colspan="2" class="bg-lunas">Lunas</th><th colspan="2" class="bg-total">Total</th></tr>
       <tr><th class="bg-belum">Plg</th><th class="bg-belum">Rp</th><th class="bg-lunas">Plg</th><th class="bg-lunas">Rp</th><th class="bg-total">Plg</th><th class="bg-total">Rp</th></tr>
@@ -153,7 +166,7 @@ function openPetugas(p) {
   currentPetugas = p; pushView(renderPetugas);
   const data = allData.filter(r => r.petugas === p), lunas = data.filter(isLunas), belum = data.filter(r => !isLunas(r)), byDate = {};
   lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-custom"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-zebra"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
   if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end pe-2">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   Object.keys(byDate).sort((a,b) => b.localeCompare(a)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end pe-2">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   view.innerHTML = h + `</tbody></table></div>`;
@@ -163,7 +176,7 @@ function openGlobal() {
   currentPetugas = "Semua"; pushView(renderPetugas);
   const lunas = allData.filter(isLunas), belum = allData.filter(r => !isLunas(r)), byDate = {};
   lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-custom"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-zebra"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
   if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end pe-2">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   Object.keys(byDate).sort((a,b) => b.localeCompare(a)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end pe-2">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   view.innerHTML = h + `</tbody></table></div>`;
@@ -183,7 +196,7 @@ function renderDetail() {
 }
 
 function drawTable(data) {
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-custom" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th>IDPEL</th><th>Nama</th><th>Koked</th><th>Rp</th></tr></thead><tbody>`;
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-zebra" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr><th>IDPEL</th><th>Nama</th><th>Koked</th><th>Rp</th></tr></thead><tbody>`;
   data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td>${r.idpel}</td><td class="text-start">${r.nama}</td><td>${r.koked}</td><td class="text-end pe-2">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
@@ -194,12 +207,12 @@ function showCardsByData(id) {
   currentDetail.forEach(r => {
     h += `<div class="card mb-2 ${r.idpel === id?'highlight':''}" id="card-${r.idpel}"><div class="card-body p-2">
       <div class="d-flex justify-content-between"><b>${r.nama}</b> <span class="badge bg-light text-dark">${r.koked}</span></div>
-      <p class="text-muted mb-1">${r.idpel} | ${r.tarif}/${r.daya} | ${r.alamat || '-'}</p>
+      <p class="text-muted mb-1" style="font-size:0.8rem">${r.idpel} | ${r.tarif}/${r.daya} | ${r.alamat || '-'}</p>
       <div class="d-flex justify-content-between align-items-center">
         <b class="text-danger">Rp ${parseIDR(r.jumlah).toLocaleString("id-ID")}</b>
         <div class="d-flex gap-1">
-          <a class="btn btn-success btn-sm" target="_blank" href="https://wa.me/?text=${getFullText(r, 'WA')}">📤 WA</a>
-          <button class="btn btn-danger btn-sm" onclick='createPDF(${JSON.stringify(r)})'>📄 PDF</button>
+          <button class="btn btn-success btn-sm" onclick='sendWA(${JSON.stringify(r)})'>WA</button>
+          <button class="btn btn-danger btn-sm" onclick='createPDF(${JSON.stringify(r)})'>PDF</button>
         </div>
       </div>
     </div></div>`;
