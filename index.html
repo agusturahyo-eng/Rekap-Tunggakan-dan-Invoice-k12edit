@@ -12,21 +12,19 @@
     body{background:#f4f6f9; font-family: sans-serif;}
     .clickable{cursor:pointer; user-select: none;}
 
-    /* --- PERBAIKAN WARNA SELANG-SELING (ZEBRA) --- */
-    /* Baris Ganjil: Putih */
-    #view table tbody tr:nth-child(odd) {
+    /* --- PERBAIKAN WARNA ZEBRA (SELANG-SELING) --- */
+    /* Menghapus pengaruh striped bawaan bootstrap */
+    .table-custom tbody tr:nth-of-type(odd) {
         background-color: #ffffff !important;
     }
-    /* Baris Genap: Abu-abu Muda */
-    #view table tbody tr:nth-child(even) {
-        background-color: #f2f7fb !important;
+    .table-custom tbody tr:nth-of-type(even) {
+        background-color: #f2f7fb !important; /* Warna abu-abu kebiruan lembut */
     }
-    /* Baris khusus 'SEMUA' agar tetap biru muda */
+    /* Warna khusus baris SEMUA */
     .row-semua {
         background-color: #e0f7fa !important;
         font-weight: bold;
     }
-    /* Hover: Saat baris disentuh kursor/jari */
     #view table tbody tr:hover {
         background-color: #d1e7ff !important;
     }
@@ -60,61 +58,59 @@ const SHEETS = {
 };
 
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
-let historyStack = [], sortState = { key: null, asc: true };
+let historyStack = [];
 
-const parseIDR = (val) => {
-  if (!val) return 0;
-  let clean = String(val).replace(/[^0-9,-]/g, '').split(',')[0];
-  return parseFloat(clean) || 0;
+const parseIDR = (v) => {
+  if (!v) return 0;
+  let n = String(v).replace(/[^0-9,-]/g, '').split(',')[0];
+  return parseFloat(n) || 0;
 };
 
 const isLunas = r => {
   if (!r.tgl_lunas) return false;
-  const status = r.tgl_lunas.trim().toUpperCase();
-  return status !== "BELUMLUNAS" && status !== "" && status !== "-";
+  const s = r.tgl_lunas.trim().toUpperCase();
+  return s !== "BELUMLUNAS" && s !== "" && s !== "-";
 };
 
-// --- LOGIK PESAN WA & PDF (FORMAT LENGKAP) ---
+// --- LOGIKA WA & PDF SESUAI DATA TEKNIS ---
 const getFullText = (r, type) => {
-  const date = new Date();
+  const d = new Date();
   const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
   const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
-  const blnIni = `${nBulanShort[date.getMonth()]}-${date.getFullYear()}`;
-  const blnLalu = date.getMonth() === 0 ? `DES-${date.getFullYear()-1}` : `${nBulanShort[date.getMonth()-1]}-${date.getFullYear()}`;
+  const blnIni = `${nBulanShort[d.getMonth()]}-${d.getFullYear()}`;
+  const blnLalu = d.getMonth() === 0 ? `DES-${d.getFullYear()-1}` : `${nBulanShort[d.getMonth()-1]}-${d.getFullYear()}`;
   let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni}` : `${blnLalu} s/d ${blnIni}`;
   
   const b1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
-  const b2 = "Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.";
-  const b3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik yang belum dilunasi beserta dendanya.";
+  const b3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar.";
 
   if (type === 'WA') {
-    return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n*UP3 KLATEN*\n*ULP TULUNG*\n\n*PEMBERITAHUAN PEMUTUSAN SEMENTARA*\n============================\n*Nama* : " + r.nama + "\n*IDPEL* : " + r.idpel + "\n*Alamat* : " + (r.alamat || '-') + "\n*Tarip/Daya* : " + r.tarif + "/" + r.daya + "\n\n*Rekening* : " + periode + "\n*Rp.* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" + b1 + "\n\n" + b3);
+    return encodeURIComponent("*PT. PLN (PERSERO) ULP TULUNG*\n*PEMBERITAHUAN PEMUTUSAN SEMENTARA*\n\n*Nama* : " + r.nama + "\n*IDPEL* : " + r.idpel + "\n*Alamat* : " + (r.alamat || '-') + "\n*Tarip/Daya* : " + r.tarif + "/" + r.daya + "\n\n*Rekening* : " + periode + "\n*Total Rp* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" + b1 + "\n\n" + b3);
   }
-  return { periode, blnIni, b1, b2, b3, tgl: `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}` };
+  return { periode, blnIni, b1, b3, tgl: `${d.getDate()} ${nBulanFull[d.getMonth()]} ${d.getFullYear()}` };
 };
 
 function createPDF(r) {
   const doc = new jsPDF();
   const info = getFullText(r, 'PDF');
-  doc.setFontSize(8);
-  doc.text("PT. PLN (PERSERO) ULP TULUNG", 15, 15);
+  doc.setFontSize(8); doc.text("PT. PLN (PERSERO) ULP TULUNG", 15, 15);
   doc.setFont(undefined, 'bold'); doc.setFontSize(10);
   doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA", 105, 30, {align: "center"});
   doc.setFont(undefined, 'normal'); doc.setFontSize(9);
   doc.text(`ID Pelanggan : ${r.idpel}`, 15, 45);
   doc.text(`Nama         : ${r.nama}`, 15, 50);
   doc.text(`Tarip / Daya : ${r.tarif} / ${r.daya}`, 15, 55);
-  doc.text(`Total Tagihan: Rp ${parseIDR(r.jumlah).toLocaleString("id-ID")}`, 15, 60);
-  doc.text(doc.splitTextToSize(info.b1, 180), 15, 75);
-  doc.text(`Tulung, ${info.tgl}`, 140, 110);
-  doc.text("MANAGER", 150, 115);
-  doc.text("MARTONO AJI PRABOWO", 140, 135);
+  doc.text(`Alamat       : ${r.alamat || '-'}`, 15, 60);
+  doc.text(`Total Tagihan: Rp ${parseIDR(r.jumlah).toLocaleString("id-ID")}`, 15, 70);
+  doc.text(doc.splitTextToSize(info.b1, 180), 15, 85);
+  doc.text(`Tulung, ${info.tgl}`, 140, 120);
+  doc.text("MANAGER", 150, 125);
+  doc.text("MARTONO AJI PRABOWO", 140, 145);
   doc.save(`TUL_${r.idpel}.pdf`);
 }
 
-// --- FUNGSI UTAMA ---
 function loadSheet(k) {
-  currentSheet = k; historyStack = []; currentPetugas = "Semua";
+  currentSheet = k; historyStack = [];
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
   fetch(SHEETS[k].url + "&t=" + new Date().getTime()).then(r => r.text()).then(csv => {
@@ -140,12 +136,12 @@ function renderPetugas() {
     else { map[p].bP++; map[p].bR += rp; tot.bP++; tot.bR += rp; }
     map[p].tP++; map[p].tR += rp; tot.tP++; tot.tR += rp;
   });
-  let h = `<div class="table-responsive"><table class="table table-bordered table-sm text-center" style="font-size:0.8rem">
+  let h = `<div class="table-responsive"><table class="table table-bordered table-sm text-center table-custom" style="font-size:0.8rem">
     <thead class="table-dark header-rekap">
       <tr><th rowspan="2">Petugas</th><th colspan="2" class="bg-belum">Belum Lunas</th><th colspan="2" class="bg-lunas">Lunas</th><th colspan="2" class="bg-total">Total</th></tr>
       <tr><th class="bg-belum">Plg</th><th class="bg-belum">Rp</th><th class="bg-lunas">Plg</th><th class="bg-lunas">Rp</th><th class="bg-total">Plg</th><th class="bg-total">Rp</th></tr>
     </thead><tbody>
-    <tr class="clickable row-semua" onclick="openGlobal()"><td>SEMUA</td><td>${tot.bP}</td><td class="text-end">${tot.bR.toLocaleString("id-ID")}</td><td>${tot.lP}</td><td class="text-end">${tot.lR.toLocaleString("id-ID")}</td><td>${tot.tP}</td><td class="text-end">${tot.tR.toLocaleString("id-ID")}</td></tr>`;
+    <tr class="clickable row-semua" onclick="openGlobal()"><td>SEMUA</td><td>${tot.bP}</td><td class="text-end pe-2">${tot.bR.toLocaleString("id-ID")}</td><td>${tot.lP}</td><td class="text-end pe-2">${tot.lR.toLocaleString("id-ID")}</td><td>${tot.tP}</td><td class="text-end pe-2">${tot.tR.toLocaleString("id-ID")}</td></tr>`;
   Object.keys(map).sort().forEach(p => { 
     const d = map[p]; 
     h += `<tr class="clickable" onclick="openPetugas('${p}')"><td class="text-start ps-2">${p}</td><td>${d.bP}</td><td class="text-end pe-2">${d.bR.toLocaleString("id-ID")}</td><td>${d.lP}</td><td class="text-end pe-2">${d.lR.toLocaleString("id-ID")}</td><td>${d.tP}</td><td class="text-end pe-2">${d.tR.toLocaleString("id-ID")}</td></tr>`; 
@@ -157,7 +153,7 @@ function openPetugas(p) {
   currentPetugas = p; pushView(renderPetugas);
   const data = allData.filter(r => r.petugas === p), lunas = data.filter(isLunas), belum = data.filter(r => !isLunas(r)), byDate = {};
   lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-custom"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
   if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end pe-2">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   Object.keys(byDate).sort((a,b) => b.localeCompare(a)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end pe-2">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   view.innerHTML = h + `</tbody></table></div>`;
@@ -167,7 +163,7 @@ function openGlobal() {
   currentPetugas = "Semua"; pushView(renderPetugas);
   const lunas = allData.filter(isLunas), belum = allData.filter(r => !isLunas(r)), byDate = {};
   lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-custom"><thead><tr class="table-success"><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
   if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end pe-2">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   Object.keys(byDate).sort((a,b) => b.localeCompare(a)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end pe-2">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   view.innerHTML = h + `</tbody></table></div>`;
@@ -178,7 +174,6 @@ function detailBelum() { currentTitle = "Belum_Lunas"; const p = currentPetugas;
 function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetail = allData.filter(r => isLunas(r) && r.tgl_lunas === t); pushView(openGlobal); renderDetail(); }
 
 function renderDetail() {
-  sortState = { key: null, asc: true };
   view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase mb-2">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari..."><button class="btn btn-success btn-sm" onclick="exportExcel()">XLSX</button></div><div id="tableArea"></div>`;
   document.getElementById("search").oninput = e => {
     const t = e.target.value.toLowerCase();
@@ -188,17 +183,7 @@ function renderDetail() {
 }
 
 function drawTable(data) {
-  window.triggerSort = (key) => {
-    if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
-    const sorted = [...data].sort((a, b) => {
-      let v1 = a[key] || ""; let v2 = b[key] || "";
-      if (key === 'jumlah') return sortState.asc ? parseIDR(v1) - parseIDR(v2) : parseIDR(v2) - parseIDR(v1);
-      return sortState.asc ? String(v1).localeCompare(String(v2), undefined, {numeric: true}) : String(v2).localeCompare(String(v1), undefined, {numeric: true});
-    });
-    drawTable(sorted);
-  };
-  const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th onclick="triggerSort('nama')">Nama${icon('nama')}</th><th onclick="triggerSort('koked')">Koked${icon('koked')}</th><th onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-custom" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th>IDPEL</th><th>Nama</th><th>Koked</th><th>Rp</th></tr></thead><tbody>`;
   data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td>${r.idpel}</td><td class="text-start">${r.nama}</td><td>${r.koked}</td><td class="text-end pe-2">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
