@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Rekap Tunggakan ULP Tulung</title>
+<title>Rekap Tunggakan & Invoice ULP Tulung</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -11,24 +11,49 @@
 <style>
 body{background:#f4f6f9; font-family: sans-serif;}
 .clickable{cursor:pointer; user-select: none;}
-tr:hover{background:#eef3ff}
+/* Warna selang-seling kustom agar lebih kontras */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+.table-striped tbody tr:nth-of-type(even) {
+    background-color: #ffffff;
+}
+tr:hover{background-color: #eef3ff !important;}
 .table-primary th:hover { background-color: #0d6efd !important; color: white; }
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
-.header-rekap th { vertical-align: middle; text-align: center; font-size: 0.8rem; }
-.bg-belum { background-color: #dc3545 !important; color: white; }
-.bg-lunas { background-color: #198754 !important; color: white; }
-.bg-total { background-color: #0d6efd !important; color: white; }
+
+/* Tambahan CSS untuk tabel rekap baru (mirip gambar) */
+.table-rekap th, .table-rekap td {
+    vertical-align: middle;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #dee2e6;
+}
+.bg-dark-0 { background-color: #000 !important; color: #555 !important; }
+.bg-lunas-1 { background-color: #0d47a1 !important; color: white; }
+.bg-lunas-2 { background-color: #1976d2 !important; color: white; }
+.bg-lunas-3 { background-color: #03a9f4 !important; color: black; }
+.bg-lunas-high { background-color: #ffeb3b !important; color: black; font-weight: bold; }
+.freeze-col {
+    position: sticky;
+    left: 0;
+    background-color: #fff;
+    z-index: 1;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
 </style>
 </head>
 <body>
-<div class="container my-3">
+<div class="container-fluid my-3">
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="loadSheet('lembar1')">Lembar 1</a></li>
   <li class="nav-item"><a class="nav-link" id="tab-lembar2" onclick="loadSheet('lembar2')">Lembar 2</a></li>
   <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
+  <li class="nav-item"><a class="nav-link" id="tab-invoice" onclick="loadSheet('invoice')">Invoice</a></li>
 </ul>
-<h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan ULP Tulung</h4>
+<h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan & Invoice</h4>
+<h4 class="text-center text-primary mb-3"> ULP Tulung</h4>
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 <div id="view"></div>
 </div>
@@ -38,7 +63,8 @@ const { jsPDF } = window.jspdf;
 const SHEETS = {
   lembar1: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=354207978&single=true&output=csv"},
   lembar2: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=311394824&single=true&output=csv"},
-  lembar3: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"}
+  lembar3: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=654408403&single=true&output=csv"},
+  invoice: {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0oO36v0vrge07HwX1zLsrGfuUxElZ3becef4DFHLNxsz2Lrohya5oThpvmkjzsNBF3_9hSdq0q4Ko/pub?gid=1657322319&single=true&output=csv"}
 };
 
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
@@ -50,28 +76,47 @@ const parseIDR = (val) => {
   return parseFloat(clean) || 0;
 };
 
-const parseDate = (str) => {
-  if (!str || str === "-" || str === "BELUMLUNAS") return new Date(0);
-  const parts = str.split('-');
-  return new Date(parts[2], parts[1] - 1, parts[0]);
-};
+function getStatusLunas(r) {
+  const valRaw = (r['tgl_lunas'] || r['Tgl Lunas'] || r['tgl lunas'] || "").toString().trim();
+  const isBelum = valRaw === "" || valRaw === "-" || valRaw === "0" || valRaw.toUpperCase().includes("BELUM");
+  return { isLunas: !isBelum, tgl: isBelum ? "BELUM LUNAS" : valRaw };
+}
 
-// PERBAIKAN: Logika isLunas disesuaikan dengan isi sheet (LUNAS jika bukan "BELUMLUNAS")
-const isLunas = r => {
-  if (!r.tgl_lunas) return false;
-  const status = r.tgl_lunas.trim().toUpperCase();
-  return status !== "BELUMLUNAS" && status !== "" && status !== "-";
-};
+// FUNGSI BARU UNTUK PARSING TANGGAL
+function parseTgl(tglStr) {
+  if (!tglStr) return 0;
+  // Memecah format seperti DD/MM/YYYY atau DD-MM-YYYY
+  const parts = tglStr.split(/[\/\- ]/); 
+  if (parts.length >= 3) {
+    let day = parseInt(parts[0], 10);
+    let month = parseInt(parts[1], 10) - 1; // Bulan di JS dimulai dari 0
+    let year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000; // Jika tahun ditulis 2 digit (misal: 26 -> 2026)
+    return new Date(year, month, day).getTime();
+  }
+  // Fallback standar
+  let d = new Date(tglStr).getTime();
+  return isNaN(d) ? 0 : d;
+}
+
+// FUNGSI UNTUK MENGAMBIL TANGGAL (1-31) DARI STRING
+function getDayFromTgl(tglStr) {
+    if (!tglStr || tglStr === "BELUM LUNAS") return null;
+    const parts = tglStr.split(/[\/\- ]/);
+    if (parts.length > 0) {
+        let d = parseInt(parts[0], 10);
+        if (!isNaN(d)) return d;
+    }
+    return null;
+}
 
 function loadSheet(k) {
-  currentSheet = k; 
-  historyStack = []; 
-  currentPetugas = "Semua"; 
+  currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
-  const urlAntiCache = SHEETS[k].url + "&t=" + new Date().getTime();
-  fetch(urlAntiCache).then(r => r.text()).then(csv => {
-    allData = Papa.parse(csv, {header: true, skipEmptyLines: true}).data;
+  view.innerHTML = "<p class='text-center'>Memuat data...</p>";
+  fetch(SHEETS[k].url).then(r => r.text()).then(csv => {
+    allData = Papa.parse(csv, { header: true, skipEmptyLines: true, transformHeader: h => h.trim() }).data;
     renderPetugas();
   });
 }
@@ -82,108 +127,184 @@ backBtn.onclick = () => {
   if (historyStack.length === 0) { backBtn.classList.add("d-none"); renderPetugas(); }
 };
 
-const getFullText = (r, type) => {
-  const date = new Date();
-  const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
-  const blnIni = `${nBulanShort[date.getMonth()]}-${date.getFullYear()}`;
-  const blnLalu = date.getMonth() === 0 ? `DES-${date.getFullYear()-1}` : `${nBulanShort[date.getMonth()-1]}-${date.getFullYear()}`;
-  let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni} (1 LEMBAR)` : `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
-  const body1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
-  const body2 = "Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.";
-  const body3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik yang belum dilunasi beserta dendanya.";
-  if (type === 'WA') {
-    return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n" + "*UP3 KLATEN*\n" + "*ULP TULUNG*\n\n" + "*PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK*\n" + "==========================================\n" + "*Kepada Yth.*\n" + "*Nama* : " + r.nama + "\n" + "*ID. Pelanggan* : " + r.idpel + "\n" + "*Alamat* : " + (r.alamat || '-') + "\n" + "*Tarip / Daya* : " + r.tarif + " / " + r.daya + "\n" + "*Koked* : " + r.koked + "\n\n" + "*Rekening* : " + periode + "\n" + "*Rp.* : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n" + "*Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "*\n" + "*Rp.* : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n" + "*Jumlah Tunggakan (belum termasuk biaya Administrasi)*\n" + "*Rp.* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" + body1 + "\n\n" + body2 + "\n\n" + body3 + "\n\n" + "*UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS*\n\n" + "TULUNG, " + date.getDate() + " " + nBulanFull[date.getMonth()] + " " + date.getFullYear() + "\n" + "*MANAGER*\n" + "*MARTONO AJI PRABOWO*\n\n" + "_ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN_");
-  }
-  return { periode, blnIni, body1, body2, body3, tgl: `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}` };
-};
-
-function createPDF(r) {
-  const doc = new jsPDF();
-  const info = getFullText(r, 'PDF');
-  doc.setFontSize(8);
-  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 15, 15);
-  doc.text("UP3 KLATEN", 15, 19); doc.text("ULP TULUNG", 15, 23); doc.text("NO. TUL :", 150, 19);
-  doc.setFont(undefined, 'bold'); doc.setFontSize(10);
-  doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK", 105, 33, {align: "center"});
-  doc.setFont(undefined, 'normal'); doc.setFontSize(9);
-  doc.text("===================================================================================", 105, 36, {align: "center"});
-  doc.text("Kepada Yth.", 15, 45);
-  doc.text(`Nama             : ${r.nama}`, 15, 50);
-  doc.text(`ID. Pelanggan    : ${r.idpel}`, 15, 55);
-  doc.text(`Alamat           : ${r.alamat || '-'}`, 15, 60);
-  doc.text(`Tarip / Daya     : ${r.tarif} / ${r.daya}`, 15, 65);
-  doc.text(`Koked : ${r.koked}`, 120, 55);
-  doc.text(`Rekening : ${info.periode}`, 15, 80);
-  doc.text(`Rp. :`, 150, 80); doc.text(parseIDR(r.rptag).toLocaleString("id-ID"), 190, 80, {align: "right"});
-  doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, 85);
-  doc.text(`Rp. :`, 150, 85); doc.text(parseIDR(r.rpbk).toLocaleString("id-ID"), 190, 85, {align: "right"});
-  doc.setFont(undefined, 'bold');
-  doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, 92);
-  doc.text(`Rp. :`, 150, 92); doc.text(parseIDR(r.jumlah).toLocaleString("id-ID"), 190, 92, {align: "right"});
-  doc.setFont(undefined, 'normal'); doc.setFontSize(8.5);
-  let p1 = doc.splitTextToSize(info.body1, 180); doc.text(p1, 15, 102);
-  let p2 = doc.splitTextToSize(info.body2, 180); doc.text(p2, 15, 114);
-  let p3 = doc.splitTextToSize(info.body3, 180); doc.text(p3, 15, 130);
-  doc.setFont(undefined, 'bold');
-  doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 15, 150);
-  doc.text(`TULUNG, ${info.tgl}`, 145, 160);
-  doc.text("MANAGER", 155, 165);
-  doc.text("MARTONO AJI PRABOWO", 145, 190);
-  doc.setFontSize(7); doc.setFont(undefined, 'normal');
-  doc.text("A5 TUL VI-01/PETUGAS PEMUTUS : ..................................", 15, 210);
-  doc.save(`TUL_${r.idpel}.pdf`);
-}
-
 function renderPetugas() {
-  const map = {};
-  let tot = { bP: 0, bR: 0, lP: 0, lR: 0, tP: 0, tR: 0 };
+  const map = {}; 
+  
+  // Penyesuaian rentang tanggal berdasarkan sheet
+  let startDay = 1, endDay = 31;
+  if (currentSheet === 'lembar1') {
+      startDay = 21;
+      endDay = 31;
+  } else if (currentSheet === 'invoice') {
+      startDay = 1;
+      endDay = 20;
+  } // lembar2 & lembar3 default 1-31
+
   allData.forEach(r => {
-    let p = r.petugas || "Tanpa Nama";
-    if (!map[p]) map[p] = { bP: 0, bR: 0, lP: 0, lR: 0, tP: 0, tR: 0 };
+    let pName = r.petugas || "Tanpa Nama";
+    let koordinator = r.koordinator || ""; 
+    let kode = r.kode || "";               
+    let target = parseInt(r.target) || 0;  
+    
+    let status = getStatusLunas(r);
     let rp = parseIDR(r.jumlah);
-    if (isLunas(r)) { 
-      map[p].lP++; map[p].lR += rp; tot.lP++; tot.lR += rp; 
-    } else { 
-      map[p].bP++; map[p].bR += rp; tot.bP++; tot.bR += rp; 
+
+    if (!map[pName]) {
+      map[pName] = { 
+          koordinator: koordinator, kode: kode, target: target,
+          j_total: 0, rp_total: 0, 
+          j_sisa: 0, rp_sisa: 0, 
+          lunas_harian: {} 
+      };
     }
-    map[p].tP++; map[p].tR += rp; tot.tP++; tot.tR += rp;
+
+    map[pName].j_total++;
+    map[pName].rp_total += rp;
+
+    if (status.isLunas) {
+        let hari = getDayFromTgl(status.tgl);
+        if (hari !== null && hari >= startDay && hari <= endDay) {
+            map[pName].lunas_harian[hari] = (map[pName].lunas_harian[hari] || 0) + 1;
+        }
+    } else {
+        map[pName].j_sisa++;
+        map[pName].rp_sisa += rp;
+    }
   });
-  const sorted = Object.keys(map).sort();
-  let h = `<div class="table-responsive"><table class="table table-bordered table-sm text-center" style="font-size:0.8rem">
-    <thead class="table-dark header-rekap">
-      <tr><th rowspan="2" class="align-middle">Petugas</th><th colspan="2" class="bg-belum">Belum Lunas</th><th colspan="2" class="bg-lunas">Lunas</th><th colspan="2" class="bg-total">Total</th></tr>
-      <tr><th class="bg-belum">Plg</th><th class="bg-belum">Rp</th><th class="bg-lunas">Plg</th><th class="bg-lunas">Rp</th><th class="bg-total">Plg</th><th class="bg-total">Rp</th></tr>
-    </thead><tbody>
-    <tr class="table-info clickable fw-bold" onclick="openGlobal()"><td>SEMUA</td><td>${tot.bP}</td><td class="text-end">${tot.bR.toLocaleString("id-ID")}</td><td>${tot.lP}</td><td class="text-end">${tot.lR.toLocaleString("id-ID")}</td><td>${tot.tP}</td><td class="text-end">${tot.tR.toLocaleString("id-ID")}</td></tr>`;
-  sorted.forEach(p => { const d = map[p]; h += `<tr class="clickable" onclick="openPetugas('${p}')"><td class="text-start">${p}</td><td>${d.bP}</td><td class="text-end">${d.bR.toLocaleString("id-ID")}</td><td>${d.lP}</td><td class="text-end">${d.lR.toLocaleString("id-ID")}</td><td>${d.tP}</td><td class="text-end">${d.tR.toLocaleString("id-ID")}</td></tr>`; });
+
+  const sorted = Object.keys(map).sort().map(p => ({name: p, ...map[p]}));
+
+  let h = `<div class="table-responsive" style="max-height: 75vh;">
+    <table class="table table-sm table-rekap" style="font-size: 0.75rem;">
+      <thead style="background-color: #4dd0e1; position: sticky; top: 0; z-index: 2;">
+        <tr>
+          <th rowspan="2" class="align-middle">NO</th>
+          <th rowspan="2" class="align-middle">KOORDINATOR</th>
+          <th rowspan="2" class="align-middle">KODE</th>
+          <th rowspan="2" class="align-middle freeze-col">PETUGAS</th>
+          <th colspan="2">TOTAL SALDO</th>
+          <th colspan="2">SALDO SAAT INI</th>
+          <th rowspan="2" class="align-middle">TARGET HARI INI</th>
+          <th colspan="${endDay - startDay + 1}">JUMLAH LUNAS TANGGAL</th>
+          <th rowspan="2" class="align-middle">PROGRES TOTAL</th>
+          <th rowspan="2" class="align-middle">TANGGAL NIHIL</th>
+        </tr>
+        <tr>
+          <th>LEMBAR</th><th>RUPIAH</th>
+          <th>LEMBAR</th><th>RUPIAH</th>`;
+          
+  for (let i = startDay; i <= endDay; i++) {
+      h += `<th>${i}</th>`;
+  }
+  
+  h += `</tr></thead><tbody>`;
+
+  let no = 1;
+  let sumTotalLbr = 0, sumTotalRp = 0, sumSisaLbr = 0, sumSisaRp = 0;
+  let sumHarian = {};
+
+  sorted.forEach(p => { 
+    let progress = 0;
+    if (p.j_total > 0) {
+        progress = Math.round(((p.j_total - p.j_sisa) / p.j_total) * 100);
+    }
+    
+    sumTotalLbr += p.j_total;
+    sumTotalRp += p.rp_total;
+    sumSisaLbr += p.j_sisa;
+    sumSisaRp += p.rp_sisa;
+
+    let rowHtml = `<tr class="clickable" onclick="openPetugas('${p.name}')">
+      <td>${no++}</td>
+      <td>${p.koordinator}</td>
+      <td>${p.kode}</td>
+      <td class="text-start freeze-col fw-bold">${p.name}</td>
+      <td style="background-color: #fff9c4;">${p.j_total}</td>
+      <td class="text-end" style="background-color: #fff9c4;">Rp ${p.rp_total.toLocaleString("id-ID")}</td>
+      <td style="background-color: ${p.j_sisa > 0 ? '#ffcdd2' : '#c8e6c9'};">${p.j_sisa}</td>
+      <td class="text-end" style="background-color: ${p.j_sisa > 0 ? '#ffcdd2' : '#c8e6c9'};">Rp ${p.rp_sisa.toLocaleString("id-ID")}</td>
+      <td>${p.target}</td>`;
+
+    for (let i = startDay; i <= endDay; i++) {
+        let val = p.lunas_harian[i] || 0;
+        sumHarian[i] = (sumHarian[i] || 0) + val;
+        
+        let colorClass = "bg-dark-0"; 
+        if (val === 1) colorClass = "bg-lunas-1";
+        else if (val === 2) colorClass = "bg-lunas-2";
+        else if (val >= 3 && val <= 5) colorClass = "bg-lunas-3";
+        else if (val > 5) colorClass = "bg-lunas-high";
+
+        rowHtml += `<td class="${colorClass}">${val}</td>`;
+    }
+
+    let progColor = progress === 100 ? '#198754' : (progress < 50 ? '#dc3545' : '#ffc107');
+    rowHtml += `
+      <td style="background-color: ${progColor}; color: ${progress===100||progress<50?'white':'black'}; font-weight: bold;">${progress}%</td>
+      <td>${p.j_sisa === 0 ? 'NIHIL' : 'BELUM'}</td>
+    </tr>`; 
+    h += rowHtml;
+  });
+
+  let totalProgress = Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) || 0;
+  h += `<tr class="fw-bold" style="background-color: #80deea; cursor: pointer;" onclick="openGlobal()">
+      <td colspan="4" class="text-center freeze-col" style="background-color: #80deea;">JUMLAH</td>
+      <td>${sumTotalLbr}</td><td class="text-end">Rp ${sumTotalRp.toLocaleString("id-ID")}</td>
+      <td>${sumSisaLbr}</td><td class="text-end">Rp ${sumSisaRp.toLocaleString("id-ID")}</td>
+      <td></td>`;
+      
+  for (let i = startDay; i <= endDay; i++) {
+      h += `<td>${sumHarian[i] || 0}</td>`;
+  }
+  
+  h += `<td style="background-color: #198754; color: white;">${totalProgress}%</td><td></td></tr>`;
   view.innerHTML = h + `</tbody></table></div>`;
 }
 
 function openPetugas(p) {
   currentPetugas = p; pushView(renderPetugas);
   const data = allData.filter(r => r.petugas === p);
-  const lunas = data.filter(isLunas), belum = data.filter(r => !isLunas(r)), byDate = {};
-  lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead class="table-success"><tr><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
-  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
-  Object.keys(byDate).sort((a,b) => parseDate(b) - parseDate(a)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  const lunas = data.filter(r => getStatusLunas(r).isLunas);
+  const belum = data.filter(r => !getStatusLunas(r).isLunas);
+  const byDate = {};
+  
+  lunas.forEach(r => { 
+    let t = getStatusLunas(r).tgl;
+    byDate[t] = byDate[t] || {j: 0, rp: 0}; 
+    byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
+  });
+  
+  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success"><tr><th>Tanggal Lunas</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUM LUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
+  
+  // PENGURUTAN BERDASARKAN TANGGAL KRONOLOGIS DI PETUGAS
+  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  
   view.innerHTML = h + `</tbody></table></div>`;
 }
 
 function openGlobal() {
   currentPetugas = "Semua"; pushView(renderPetugas);
-  const lunas = allData.filter(isLunas), belum = allData.filter(r => !isLunas(r)), byDate = {};
-  lunas.forEach(r => { byDate[r.tgl_lunas] = byDate[r.tgl_lunas] || {j: 0, rp: 0}; byDate[r.tgl_lunas].j++; byDate[r.tgl_lunas].rp += parseIDR(r.jumlah); });
-  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead class="table-success"><tr><th>Tanggal</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
-  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUMLUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
-  Object.keys(byDate).sort((a,b) => parseDate(b) - parseDate(a)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  const lunas = allData.filter(r => getStatusLunas(r).isLunas);
+  const belum = allData.filter(r => !getStatusLunas(r).isLunas);
+  const byDate = {};
+  lunas.forEach(r => { 
+    let t = getStatusLunas(r).tgl;
+    byDate[t] = byDate[t] || {j: 0, rp: 0}; 
+    byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
+  });
+  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success"><tr><th>Tanggal Lunas</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
+  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUM LUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
+  
+  // PENGURUTAN BERDASARKAN TANGGAL KRONOLOGIS DI GLOBAL
+  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  
   view.innerHTML = h + `</tbody></table></div>`;
 }
 
-function detailLunas(t) { currentTitle = `Lunas_${t}`; currentDetail = allData.filter(r => r.petugas === currentPetugas && isLunas(r) && r.tgl_lunas === t); pushView(()=>openPetugas(currentPetugas)); renderDetail(); }
-function detailBelum() { currentTitle = "Belum_Lunas"; const p = currentPetugas; currentDetail = allData.filter(r => (p === "Semua" ? true : r.petugas === p) && !isLunas(r)); pushView(()=>(p==="Semua"?openGlobal():openPetugas(p))); renderDetail(); }
-function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetail = allData.filter(r => isLunas(r) && r.tgl_lunas === t); pushView(openGlobal); renderDetail(); }
+function detailLunas(t) { currentTitle = `Lunas_${t}`; currentDetail = allData.filter(r => r.petugas === currentPetugas && getStatusLunas(r).isLunas && getStatusLunas(r).tgl === t); pushView(()=>openPetugas(currentPetugas)); renderDetail(); }
+function detailBelum() { currentTitle = "Belum_Lunas"; const p = currentPetugas; currentDetail = allData.filter(r => (p === "Semua" ? true : r.petugas === p) && !getStatusLunas(r).isLunas); pushView(()=>(p==="Semua"?openGlobal():openPetugas(p))); renderDetail(); }
+function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetail = allData.filter(r => getStatusLunas(r).isLunas && getStatusLunas(r).tgl === t); pushView(openGlobal); renderDetail(); }
 
 function renderDetail() {
   sortState = { key: null, asc: true };
@@ -199,14 +320,14 @@ function drawTable(data) {
   window.triggerSort = (key) => {
     if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
     const sorted = [...data].sort((a, b) => {
-      let v1 = a[key] || ""; let v2 = b[key] || "";
+      let v1 = a[key] || "", v2 = b[key] || "";
       if (key === 'jumlah') return sortState.asc ? parseIDR(v1) - parseIDR(v2) : parseIDR(v2) - parseIDR(v1);
       return sortState.asc ? String(v1).localeCompare(String(v2), undefined, {numeric: true}) : String(v2).localeCompare(String(v1), undefined, {numeric: true});
     });
     drawTable(sorted);
   };
   const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th class="clickable" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th class="clickable" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
   data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td>${r.idpel}</td><td>${r.nama}</td><td>${r.koked}</td><td class="text-end">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
@@ -229,6 +350,72 @@ function showCardsByData(id) {
   });
   view.innerHTML = h;
   if(id) setTimeout(() => document.getElementById(`card-${id}`).scrollIntoView({behavior:'smooth', block:'center'}), 100);
+}
+
+/* WA & PDF */
+const getFullText = (r, type) => {
+  const date = new Date();
+  const nBulanFull = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+  const nBulanShort = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOP", "DES"];
+  const blnIniFull = nBulanFull[date.getMonth()];
+  const blnIni = `${nBulanShort[date.getMonth()]}-${date.getFullYear()}`;
+  const blnLalu = date.getMonth() === 0 ? `DES-${date.getFullYear()-1}` : `${nBulanShort[date.getMonth()-1]}-${date.getFullYear()}`;
+  
+  if (currentSheet === 'invoice') {
+    if (type === 'WA') {
+      return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n*UP3 KLATEN*\n*ULP TULUNG*\n\n*PEMBERITAHUAN TAGIHAN LISTRIK*\n==========================================\nPelanggan setia PLN,\n*Nama* : " + r.nama + "\n*GarduTiang* : " + (r.gardu || '-') + "\n*Idpel* : " + r.idpel + "\n*Koked* : " + r.koked + "\n*Alamat* : " + (r.alamat || '-') + "\n*Tarif / Daya* : " + r.tarif + " / " + r.daya + "\n*No. Kwh* : " + (r.no_kwh || '-') + "\n\nBersama ini kami sampaikan bahwa Jumlah Total tagihan listrik bulan *" + blnIniFull + " " + date.getFullYear() + "* adalah *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*.\n\nAgar terhindar dari pemutusan aliran listrik, kami berharap agar tagihan di atas segera dilunasi.\nBatas akhir pembayaran tagihan listrik adalah tanggal 20 setiap bulannya & hari libur transaksi masih bisa dilakukan pada Loket-loket PPOB online.\n\nApabila sampai dengan batas waktu yang ditentukan, tanggal 20 belum lunas, maka akan dilakukan pemutusan aliran listrik.\nDemikian atas perhatian dan kerjasamanya diucapkan terimakasih.\n\nTulung, " + date.getDate() + " " + blnIniFull + " " + date.getFullYear() + "\n\n*BAYARLAH LISTRIK TANGGAL 1-15 SETIAP BULANNYA*\n*PASTI NYAMAN SEMUA SENANG*\n\n*MARTONO AJI PRABOWO*\n\n_ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN_");
+    }
+    return { tgl: `${date.getDate()} ${blnIniFull} ${date.getFullYear()}`, blnIniFull };
+  } else {
+    let periode = (currentSheet === 'lembar1') ? `${blnIni} s/d ${blnIni} (1 LEMBAR)` : `${blnLalu} s/d ${blnIni} (2 LEMBAR)`;
+    const body1 = "Dengan ini diberitahukan dengan hormat bahwa pada hari ini aliran listrik di rumah/alamat seperti tersebut diatas terpaksa diputus untuk sementara karena rekening listrik belum dilunasi pada waktu yang telah ditetapkan.";
+    const body2 = "Penyambungan kembali akan dilakukan pada setiap hari jam kerja apabila rekening serta biaya keterlambatan dilunasi di tempat penerimaan pembayaran rekening listrik, kantor pos, atau bank yang ditunjuk oleh PLN.";
+    const body3 = "Apabila dalam jangka waktu 60 hari terhitung sejak dilakukan pemutusan sementara tunggakan belum dilunasi, maka instalasi milik PLN akan dibongkar, dan penyambungan kembali dapat dilaksanakan setelah Saudara menyelesaikan Biaya Penyambungan yang diperlakukan sebagai sambungan baru serta tetap diwajibkan membayar tagihan listrik yang belum dilunasi beserta dendanya.";
+    if (type === 'WA') {
+      return encodeURIComponent("*PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY*\n*UP3 KLATEN*\n*ULP TULUNG*\n\n*PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK*\n==========================================\n*Kepada Yth.*\n*Nama* : " + r.nama + "\n*ID. Pelanggan* : " + r.idpel + "\n*Alamat* : " + (r.alamat || '-') + "\n*Tarip / Daya* : " + r.tarif + " / " + r.daya + "\n*Koked* : " + r.koked + "\n\n*Rekening* : " + periode + "\n*Rp.* : " + parseIDR(r.rptag).toLocaleString("id-ID") + "\n*Jumlah Biaya Keterlambatan s.d bulan : " + blnIni + "*\n*Rp.* : " + parseIDR(r.rpbk).toLocaleString("id-ID") + "\n\n*Jumlah Tunggakan (belum termasuk biaya Administrasi)*\n*Rp.* : *" + parseIDR(r.jumlah).toLocaleString("id-ID") + "*\n\n" + body1 + "\n\n" + body2 + "\n\n" + body3 + "\n\n*UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS*\n\nTULUNG, " + date.getDate() + " " + nBulanFull[date.getMonth()] + " " + date.getFullYear() + "\n*MANAGER*\n*MARTONO AJI PRABOWO*\n\n_ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN_");
+    }
+    return { periode, blnIni, body1, body2, body3, tgl: `${date.getDate()} ${nBulanFull[date.getMonth()]} ${date.getFullYear()}` };
+  }
+};
+
+function createPDF(r) {
+  const doc = new jsPDF();
+  const info = getFullText(r, 'PDF');
+  if (currentSheet === 'invoice') {
+    doc.setFontSize(9); doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 15, 15);
+    doc.text(`Petugas : ${r.petugas || '-'}`, 150, 15); doc.text("UP3 KLATEN", 15, 19); doc.text("ULP TULUNG", 15, 23);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(11); doc.text("PEMBERITAHUAN TAGIHAN LISTRIK", 105, 33, {align: "center"});
+    doc.setFont(undefined, 'normal'); doc.setFontSize(9); doc.text("Pelanggan setia PLN,", 15, 45);
+    doc.text(`Nama             : ${r.nama}`, 15, 52); doc.text(`GarduTiang : ${r.gardu || '-'}`, 120, 52);
+    doc.text(`Idpel              : ${r.idpel}`, 15, 57); doc.text(`Koked          : ${r.koked}`, 120, 57);
+    doc.text(`Alamat           : ${r.alamat || '-'}`, 15, 62); doc.text(`Tarif / Daya   : ${r.tarif} / ${r.daya}`, 15, 67); doc.text(`No. Kwh       : ${r.no_kwh || '-'}`, 120, 67);
+    let txt = `Bersama ini kami sampaikan bahwa Jumlah Total tagihan listrik bulan ${info.blnIniFull} 2026 adalah ${parseIDR(r.jumlah).toLocaleString("id-ID")}. Agar terhindar dari pemutusan aliran listrik, kami berharap agar tagihan di atas segera dilunasi.`;
+    doc.text(doc.splitTextToSize(txt, 180), 15, 80);
+    doc.text("Batas akhir pembayaran tagihan listrik adalah tanggal 20 setiap bulannya & hari libur transaksi masih bisa dilakukan pada Loket-loket PPOB online. Apabila sampai dengan batas waktu yang ditentukan, tanggal 20 belum lunas, maka akan dilakukan pemutusan aliran listrik.", 15, 95, {maxWidth: 180});
+    doc.text("Demikian atas perhatian dan kerjasamanya diucapkan terimakasih.", 15, 115);
+    doc.text(`Tulung, ${info.tgl}`, 145, 125); doc.setFont(undefined, 'bold');
+    doc.text("BAYARLAH LISTRIK TANGGAL 1-15 SETIAP BULANNYA", 15, 135); doc.text("PASTI NYAMAN SEMUA SENANG", 15, 140);
+    doc.text("MARTONO AJI PRABOWO", 145, 150); doc.setFontSize(8); doc.setFont(undefined, 'italic');
+    doc.text("ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN", 15, 160);
+  } else {
+    doc.setFontSize(8); doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", 15, 15);
+    doc.text("UP3 KLATEN", 15, 19); doc.text("ULP TULUNG", 15, 23); doc.text("NO. TUL :", 150, 19);
+    doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.text("PEMBERITAHUAN PELAKSANAAN PEMUTUSAN SEMENTARA SAMBUNGAN TENAGA LISTRIK", 105, 33, {align: "center"});
+    doc.setFont(undefined, 'normal'); doc.setFontSize(9); doc.text("===================================================================================", 105, 36, {align: "center"});
+    doc.text("Kepada Yth.", 15, 45); doc.text(`Nama             : ${r.nama}`, 15, 50); doc.text(`ID. Pelanggan    : ${r.idpel}`, 15, 55);
+    doc.text(`Alamat           : ${r.alamat || '-'}`, 15, 60); doc.text(`Tarip / Daya     : ${r.tarif} / ${r.daya}`, 15, 65); doc.text(`Koked : ${r.koked}`, 120, 55);
+    doc.text(`Rekening : ${info.periode}`, 15, 80); doc.text(`Rp. :`, 150, 80); doc.text(parseIDR(r.rptag).toLocaleString("id-ID"), 190, 80, {align: "right"});
+    doc.text(`Jumlah Biaya Keterlambatan s.d bulan : ${info.blnIni}`, 15, 85); doc.text(`Rp. :`, 150, 85); doc.text(parseIDR(r.rpbk).toLocaleString("id-ID"), 190, 85, {align: "right"});
+    doc.setFont(undefined, 'bold'); doc.text(`Jumlah Tunggakan (belum termasuk biaya Administrasi)`, 15, 92);
+    doc.text(`Rp. :`, 150, 92); doc.text(parseIDR(r.jumlah).toLocaleString("id-ID"), 190, 92, {align: "right"});
+    doc.setFont(undefined, 'normal'); doc.setFontSize(8.5);
+    doc.text(doc.splitTextToSize(info.body1, 180), 15, 102); doc.text(doc.splitTextToSize(info.body2, 180), 15, 114);
+    doc.text(doc.splitTextToSize(info.body3, 180), 15, 130); doc.setFont(undefined, 'bold');
+    doc.text("UNTUK MENGHINDARI RESIKO, MOHON TIDAK TITIP PEMBAYARAN REKENING KEPADA PETUGAS", 15, 150);
+    doc.text(`TULUNG, ${info.tgl}`, 145, 160); doc.text("MANAGER", 155, 165); doc.text("MARTONO AJI PRABOWO", 145, 190);
+    doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.text("A5 TUL VI-01/PETUGAS PEMUTUS : ..................................", 15, 210);
+  }
+  doc.save(`${currentSheet === 'invoice' ? 'Tagihan' : 'TUL'}_${r.idpel}.pdf`);
 }
 
 function exportExcel() {
