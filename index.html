@@ -83,8 +83,13 @@ function getStatusLunas(r) {
 }
 
 // FUNGSI BARU UNTUK PARSING TANGGAL
+// FUNGSI BARU UNTUK PARSING TANGGAL (SUDAH DIUPDATE)
 function parseTgl(tglStr) {
   if (!tglStr) return 0;
+  
+  // Jika formatnya hanya angka (misal "4" atau "13"), langsung urutkan sebagai angka
+  if (!isNaN(tglStr)) return parseInt(tglStr, 10);
+
   // Memecah format seperti DD/MM/YYYY atau DD-MM-YYYY
   const parts = tglStr.split(/[\/\- ]/); 
   if (parts.length >= 3) {
@@ -94,6 +99,7 @@ function parseTgl(tglStr) {
     if (year < 100) year += 2000; // Jika tahun ditulis 2 digit (misal: 26 -> 2026)
     return new Date(year, month, day).getTime();
   }
+  
   // Fallback standar
   let d = new Date(tglStr).getTime();
   return isNaN(d) ? 0 : d;
