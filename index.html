@@ -52,8 +52,11 @@ tr:hover{background-color: #eef3ff !important;}
   <li class="nav-item"><a class="nav-link" id="tab-lembar3" onclick="loadSheet('lembar3')">Lembar 3</a></li>
   <li class="nav-item"><a class="nav-link" id="tab-invoice" onclick="loadSheet('invoice')">Invoice</a></li>
 </ul>
-<h4 class="text-center text-primary mb-3">⚡ Rekap Tunggakan & Invoice</h4>
-<h4 class="text-center text-primary mb-3"> ULP Tulung</h4>
+<h4 class="text-center text-primary mb-1">⚡ Rekap Tunggakan & Invoice</h4>
+<h4 class="text-center text-primary mb-2"> ULP Tulung</h4>
+
+<div id="updateInfo" class="text-center text-secondary small mb-3 p-2 bg-white rounded shadow-sm mx-auto" style="max-width: 600px;"></div>
+
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 <div id="view"></div>
 </div>
@@ -77,12 +80,13 @@ const parseIDR = (val) => {
 };
 
 function getStatusLunas(r) {
-  const valRaw = (r['tgl_lunas'] || r['Tgl Lunas'] || r['tgl lunas'] || "").toString().trim();
+  // Ditambahkan pengecekan untuk kolom TGLLUNAS secara eksplisit
+  const valRaw = (r['TGLLUNAS'] || r['tgllunas'] || r['tgl_lunas'] || r['Tgl Lunas'] || r['tgl lunas'] || "").toString().trim();
   const isBelum = valRaw === "" || valRaw === "-" || valRaw === "0" || valRaw.toUpperCase().includes("BELUM");
   return { isLunas: !isBelum, tgl: isBelum ? "BELUM LUNAS" : valRaw };
 }
 
-// FUNGSI BARU UNTUK PARSING TANGGAL (SUDAH DIUPDATE)
+// FUNGSI UNTUK PARSING TANGGAL
 function parseTgl(tglStr) {
   if (!tglStr) return 0;
   
@@ -94,7 +98,12 @@ function parseTgl(tglStr) {
     let month = parseInt(parts[1], 10) - 1; 
     let year = parseInt(parts[2], 10);
     if (year < 100) year += 2000; 
-    return new Date(year, month, day).getTime();
+    
+    // Jika ada komponen jam/menit (misal: 22/05/2026 14:30)
+    let hour = parts[3] ? parseInt(parts[3], 10) : 0;
+    let minute = parts[4] ? parseInt(parts[4], 10) : 0;
+    
+    return new Date(year, month, day, hour, minute).getTime();
   }
   
   let d = new Date(tglStr).getTime();
@@ -116,8 +125,34 @@ function loadSheet(k) {
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   document.getElementById("tab-" + k).classList.add("active");
   view.innerHTML = "<p class='text-center'>Memuat data...</p>";
+  document.getElementById("updateInfo").innerHTML = "Memperbarui info sinkronisasi...";
+  
   fetch(SHEETS[k].url).then(r => r.text()).then(csv => {
     allData = Papa.parse(csv, { header: true, skipEmptyLines: true, transformHeader: h => h.trim() }).data;
+    
+    // LOGIKA PENCARIAN TANGGAL PELUNASAN TERBARU
+    let tglTerbaru = "-";
+    let maxTime = 0;
+    allData.forEach(r => {
+      let status = getStatusLunas(r);
+      if (status.isLunas) {
+        let t = parseTgl(status.tgl);
+        if (t > maxTime) {
+          maxTime = t;
+          tglTerbaru = status.tgl; // Menyimpan teks asli dari kolom TGLLUNAS yang paling baru
+        }
+      }
+    });
+
+    // Menampilkan Info Update ke HTML bagian atas
+    const sekarang = new Date();
+    const waktuBuka = sekarang.toLocaleTimeString("id-ID", {hour: '2-digit', minute:'2-digit'});
+    document.getElementById("updateInfo").innerHTML = `
+      📅 <b>Pelunasan Terbaru (TGLLUNAS):</b> <span class="text-success fw-bold">${tglTerbaru}</span> 
+      &nbsp;|&nbsp; 
+      🔄 <b>Last Refresh:</b> ${waktuBuka} WIB
+    `;
+
     renderPetugas();
   });
 }
@@ -179,9 +214,9 @@ function renderPetugas() {
       <thead style="background-color: #4dd0e1; position: sticky; top: 0; z-index: 2;">
         <tr>
           <th rowspan="2" class="align-middle">NO</th>
-          <th rowspan="2" class="align-middle">KOORDINATOR</th>
-          <th rowspan="2" class="align-middle">KODE</th>
-          <th rowspan="2" class="align-middle freeze-col">PETUGAS</th>
+          <th rowspan="2" class="align-middle text-start">KOORDINATOR</th>
+          <th rowspan="2" class="align-middle text-start">KODE</th>
+          <th rowspan="2" class="align-middle freeze-col text-start">PETUGAS</th>
           <th colspan="2">TOTAL SALDO</th>
           <th colspan="2">SALDO SAAT INI</th>
           <th rowspan="2" class="align-middle">TARGET HARI INI</th>
@@ -190,8 +225,8 @@ function renderPetugas() {
           <th rowspan="2" class="align-middle">TANGGAL NIHIL</th>
         </tr>
         <tr>
-          <th>LEMBAR</th><th class="text-middle">RUPIAH</th>
-          <th>LEMBAR</th><th class="text-middle">RUPIAH</th>`;
+          <th>LEMBAR</th><th class="text-end">RUPIAH</th>
+          <th>LEMBAR</th><th class="text-end">RUPIAH</th>`;
           
   for (let i = startDay; i <= endDay; i++) {
       h += `<th>${i}</th>`;
@@ -220,14 +255,14 @@ function renderPetugas() {
     if (progress >= 0 && progress <= 20) { progBgColor = "black"; progTxtColor = "white"; }
     else if (progress > 20 && progress <= 60) { progBgColor = "red"; progTxtColor = "white"; }
     else if (progress > 60 && progress <= 90) { progBgColor = "yellow"; progTxtColor = "black"; }
-    else if (progress > 90 && progress < 100) { progBgColor = "green"; progTxtColor = "black"; }
+    else if (progress > 90 && progress < 100) { progBgColor = "lightblue"; progTxtColor = "black"; }
     else if (progress >= 100) { progBgColor = "darkblue"; progTxtColor = "white"; }
 
     let rowHtml = `<tr class="clickable" onclick="openPetugas('${p.name}')">
       <td class="text-center">${no++}</td>
       <td class="text-start">${p.koordinator}</td>
-      <td class="text-center">${p.kode}</td>
-      <td class="text-center freeze-col fw-bold">${p.name}</td>
+      <td class="text-start">${p.kode}</td>
+      <td class="text-start freeze-col fw-bold">${p.name}</td>
       <td class="text-center" style="background-color: #fff9c4;">${p.j_total}</td>
       <td class="text-end" style="background-color: #fff9c4;">Rp ${p.rp_total.toLocaleString("id-ID")}</td>
       <td class="text-center" style="background-color: ${progBgColor}; color: ${progTxtColor};">${p.j_sisa}</td>
@@ -262,7 +297,7 @@ function renderPetugas() {
   if (totalProgress >= 0 && totalProgress <= 20) { totBgColor = "black"; totTxtColor = "white"; }
   else if (totalProgress > 20 && totalProgress <= 60) { totBgColor = "red"; totTxtColor = "white"; }
   else if (totalProgress > 60 && totalProgress <= 90) { totBgColor = "yellow"; totTxtColor = "black"; }
-  else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "green"; totTxtColor = "black"; }
+  else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "lightblue"; totTxtColor = "black"; }
   else if (totalProgress >= 100) { totBgColor = "darkblue"; totTxtColor = "white"; }
 
   h += `<tr class="fw-bold" style="background-color: #80deea; cursor: pointer;" onclick="openGlobal()">
