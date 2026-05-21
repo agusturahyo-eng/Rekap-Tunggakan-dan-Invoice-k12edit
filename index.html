@@ -26,7 +26,7 @@ tr:hover{background-color: #eef3ff !important;}
 /* Tambahan CSS untuk tabel rekap baru (mirip gambar) */
 .table-rekap th, .table-rekap td {
     vertical-align: middle;
-    text-align: center;
+    text-align: center; /* Default rata tengah untuk tabel rekap */
     white-space: nowrap;
     border: 1px solid #dee2e6;
 }
@@ -82,30 +82,25 @@ function getStatusLunas(r) {
   return { isLunas: !isBelum, tgl: isBelum ? "BELUM LUNAS" : valRaw };
 }
 
-// FUNGSI BARU UNTUK PARSING TANGGAL
 // FUNGSI BARU UNTUK PARSING TANGGAL (SUDAH DIUPDATE)
 function parseTgl(tglStr) {
   if (!tglStr) return 0;
   
-  // Jika formatnya hanya angka (misal "4" atau "13"), langsung urutkan sebagai angka
   if (!isNaN(tglStr)) return parseInt(tglStr, 10);
 
-  // Memecah format seperti DD/MM/YYYY atau DD-MM-YYYY
   const parts = tglStr.split(/[\/\- ]/); 
   if (parts.length >= 3) {
     let day = parseInt(parts[0], 10);
-    let month = parseInt(parts[1], 10) - 1; // Bulan di JS dimulai dari 0
+    let month = parseInt(parts[1], 10) - 1; 
     let year = parseInt(parts[2], 10);
-    if (year < 100) year += 2000; // Jika tahun ditulis 2 digit (misal: 26 -> 2026)
+    if (year < 100) year += 2000; 
     return new Date(year, month, day).getTime();
   }
   
-  // Fallback standar
   let d = new Date(tglStr).getTime();
   return isNaN(d) ? 0 : d;
 }
 
-// FUNGSI UNTUK MENGAMBIL TANGGAL (1-31) DARI STRING
 function getDayFromTgl(tglStr) {
     if (!tglStr || tglStr === "BELUM LUNAS") return null;
     const parts = tglStr.split(/[\/\- ]/);
@@ -136,7 +131,6 @@ backBtn.onclick = () => {
 function renderPetugas() {
   const map = {}; 
   
-  // Penyesuaian rentang tanggal berdasarkan sheet
   let startDay = 1, endDay = 31;
   if (currentSheet === 'lembar1') {
       startDay = 21;
@@ -144,7 +138,7 @@ function renderPetugas() {
   } else if (currentSheet === 'invoice') {
       startDay = 1;
       endDay = 20;
-  } // lembar2 & lembar3 default 1-31
+  }
 
   allData.forEach(r => {
     let pName = r.petugas || "Tanpa Nama";
@@ -185,9 +179,9 @@ function renderPetugas() {
       <thead style="background-color: #4dd0e1; position: sticky; top: 0; z-index: 2;">
         <tr>
           <th rowspan="2" class="align-middle">NO</th>
-          <th rowspan="2" class="align-middle">KOORDINATOR</th>
-          <th rowspan="2" class="align-middle">KODE</th>
-          <th rowspan="2" class="align-middle freeze-col">PETUGAS</th>
+          <th rowspan="2" class="align-middle text-start">KOORDINATOR</th>
+          <th rowspan="2" class="align-middle text-start">KODE</th>
+          <th rowspan="2" class="align-middle freeze-col text-start">PETUGAS</th>
           <th colspan="2">TOTAL SALDO</th>
           <th colspan="2">SALDO SAAT INI</th>
           <th rowspan="2" class="align-middle">TARGET HARI INI</th>
@@ -196,8 +190,8 @@ function renderPetugas() {
           <th rowspan="2" class="align-middle">TANGGAL NIHIL</th>
         </tr>
         <tr>
-          <th>LEMBAR</th><th>RUPIAH</th>
-          <th>LEMBAR</th><th>RUPIAH</th>`;
+          <th>LEMBAR</th><th class="text-end">RUPIAH</th>
+          <th>LEMBAR</th><th class="text-end">RUPIAH</th>`;
           
   for (let i = startDay; i <= endDay; i++) {
       h += `<th>${i}</th>`;
@@ -209,7 +203,7 @@ function renderPetugas() {
   let sumTotalLbr = 0, sumTotalRp = 0, sumSisaLbr = 0, sumSisaRp = 0;
   let sumHarian = {};
 
- sorted.forEach(p => { 
+  sorted.forEach(p => { 
     let progress = 0;
     if (p.j_total > 0) {
         progress = Math.round(((p.j_total - p.j_sisa) / p.j_total) * 100);
@@ -220,26 +214,25 @@ function renderPetugas() {
     sumSisaLbr += p.j_sisa;
     sumSisaRp += p.rp_sisa;
 
-    // --- KODE WARNA BARU UNTUK BARIS PETUGAS ---
+    // --- LOGIKA WARNA ---
     let progBgColor = "";
     let progTxtColor = "";
     if (progress >= 0 && progress <= 20) { progBgColor = "black"; progTxtColor = "white"; }
     else if (progress > 20 && progress <= 60) { progBgColor = "red"; progTxtColor = "white"; }
     else if (progress > 60 && progress <= 90) { progBgColor = "yellow"; progTxtColor = "black"; }
-    else if (progress > 90 && progress < 100) { progBgColor = "green"; progTxtColor = "black"; }
+    else if (progress > 90 && progress < 100) { progBgColor = "lightblue"; progTxtColor = "black"; }
     else if (progress >= 100) { progBgColor = "darkblue"; progTxtColor = "white"; }
-    // -------------------------------------------
 
     let rowHtml = `<tr class="clickable" onclick="openPetugas('${p.name}')">
-      <td>${no++}</td>
-      <td>${p.koordinator}</td>
-      <td>${p.kode}</td>
+      <td class="text-center">${no++}</td>
+      <td class="text-start">${p.koordinator}</td>
+      <td class="text-start">${p.kode}</td>
       <td class="text-start freeze-col fw-bold">${p.name}</td>
-      <td style="background-color: #fff9c4;">${p.j_total}</td>
+      <td class="text-center" style="background-color: #fff9c4;">${p.j_total}</td>
       <td class="text-end" style="background-color: #fff9c4;">Rp ${p.rp_total.toLocaleString("id-ID")}</td>
-      <td style="background-color: ${progBgColor}; color: ${progTxtColor};">${p.j_sisa}</td>
+      <td class="text-center" style="background-color: ${progBgColor}; color: ${progTxtColor};">${p.j_sisa}</td>
       <td class="text-end" style="background-color: ${progBgColor}; color: ${progTxtColor};">Rp ${p.rp_sisa.toLocaleString("id-ID")}</td>
-      <td>${p.target}</td>`;
+      <td class="text-center">${p.target}</td>`;
 
     for (let i = startDay; i <= endDay; i++) {
         let val = p.lunas_harian[i] || 0;
@@ -251,19 +244,19 @@ function renderPetugas() {
         else if (val >= 3 && val <= 5) colorClass = "bg-lunas-3";
         else if (val > 5) colorClass = "bg-lunas-high";
 
-        rowHtml += `<td class="${colorClass}">${val}</td>`;
+        rowHtml += `<td class="text-center ${colorClass}">${val}</td>`;
     }
 
     rowHtml += `
-      <td style="background-color: ${progBgColor}; color: ${progTxtColor}; font-weight: bold;">${progress}%</td>
-      <td>${p.j_sisa === 0 ? 'NIHIL' : 'BELUM'}</td>
+      <td class="text-center" style="background-color: ${progBgColor}; color: ${progTxtColor}; font-weight: bold;">${progress}%</td>
+      <td class="text-center">${p.j_sisa === 0 ? 'NIHIL' : 'BELUM'}</td>
     </tr>`; 
     h += rowHtml;
   });
 
   let totalProgress = Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) || 0;
 
-  // --- KODE WARNA BARU UNTUK BARIS JUMLAH GLOBAL ---
+  // --- LOGIKA WARNA UNTUK JUMLAH GLOBAL ---
   let totBgColor = "";
   let totTxtColor = "";
   if (totalProgress >= 0 && totalProgress <= 20) { totBgColor = "black"; totTxtColor = "white"; }
@@ -271,20 +264,19 @@ function renderPetugas() {
   else if (totalProgress > 60 && totalProgress <= 90) { totBgColor = "yellow"; totTxtColor = "black"; }
   else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "lightblue"; totTxtColor = "black"; }
   else if (totalProgress >= 100) { totBgColor = "darkblue"; totTxtColor = "white"; }
-  // -------------------------------------------------
 
   h += `<tr class="fw-bold" style="background-color: #80deea; cursor: pointer;" onclick="openGlobal()">
       <td colspan="4" class="text-center freeze-col" style="background-color: #80deea;">JUMLAH</td>
-      <td>${sumTotalLbr}</td><td class="text-end">Rp ${sumTotalRp.toLocaleString("id-ID")}</td>
-      <td style="background-color: ${totBgColor}; color: ${totTxtColor};">${sumSisaLbr}</td>
+      <td class="text-center">${sumTotalLbr}</td><td class="text-end">Rp ${sumTotalRp.toLocaleString("id-ID")}</td>
+      <td class="text-center" style="background-color: ${totBgColor}; color: ${totTxtColor};">${sumSisaLbr}</td>
       <td class="text-end" style="background-color: ${totBgColor}; color: ${totTxtColor};">Rp ${sumSisaRp.toLocaleString("id-ID")}</td>
       <td></td>`;
       
   for (let i = startDay; i <= endDay; i++) {
-      h += `<td>${sumHarian[i] || 0}</td>`;
+      h += `<td class="text-center">${sumHarian[i] || 0}</td>`;
   }
   
-  h += `<td style="background-color: ${totBgColor}; color: ${totTxtColor};">${totalProgress}%</td><td></td></tr>`;
+  h += `<td class="text-center" style="background-color: ${totBgColor}; color: ${totTxtColor};">${totalProgress}%</td><td></td></tr>`;
   view.innerHTML = h + `</tbody></table></div>`;
 }
 
@@ -301,11 +293,10 @@ function openPetugas(p) {
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
   
-  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success"><tr><th>Tanggal Lunas</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
-  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUM LUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
+  let h = `<h6 class="text-primary fw-bold">Petugas: ${p}</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success text-center"><tr><th class="text-start">Tanggal Lunas</th><th class="text-center">Plg</th><th class="text-end">Total Rp</th></tr></thead><tbody>`;
+  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td class="text-start">BELUM LUNAS</td><td class="text-center">${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   
-  // PENGURUTAN BERDASARKAN TANGGAL KRONOLOGIS DI PETUGAS
-  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailLunas('${t}')"><td class="text-start">${t}</td><td class="text-center">${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   
   view.innerHTML = h + `</tbody></table></div>`;
 }
@@ -320,11 +311,10 @@ function openGlobal() {
     byDate[t] = byDate[t] || {j: 0, rp: 0}; 
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
-  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success"><tr><th>Tanggal Lunas</th><th>Plg</th><th>Total Rp</th></tr></thead><tbody>`;
-  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td>BELUM LUNAS</td><td>${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
+  let h = `<h6 class="text-primary fw-bold">Semua Petugas</h6><div class="table-responsive"><table class="table table-sm table-bordered table-striped"><thead class="table-success text-center"><tr><th class="text-start">Tanggal Lunas</th><th class="text-center">Plg</th><th class="text-end">Total Rp</th></tr></thead><tbody>`;
+  if (belum.length > 0) h += `<tr class="clickable" onclick="detailBelum()"><td class="text-start">BELUM LUNAS</td><td class="text-center">${belum.length}</td><td class="text-end">${belum.reduce((a,b)=>a+parseIDR(b.jumlah),0).toLocaleString("id-ID")}</td></tr>`;
   
-  // PENGURUTAN BERDASARKAN TANGGAL KRONOLOGIS DI GLOBAL
-  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td>${t}</td><td>${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
+  Object.keys(byDate).sort((a,b) => parseTgl(a) - parseTgl(b)).forEach(t => { h += `<tr class="clickable" onclick="detailGlobalLunas('${t}')"><td class="text-start">${t}</td><td class="text-center">${byDate[t].j}</td><td class="text-end">${byDate[t].rp.toLocaleString("id-ID")}</td></tr>`; });
   
   view.innerHTML = h + `</tbody></table></div>`;
 }
@@ -354,8 +344,8 @@ function drawTable(data) {
     drawTable(sorted);
   };
   const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th class="clickable" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
-  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td>${r.idpel}</td><td>${r.nama}</td><td>${r.koked}</td><td class="text-end">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped" style="font-size:0.7rem"><thead class="table-primary text-nowrap"><tr><th class="clickable text-start" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable text-start" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable text-center" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable text-end" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
+  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td class="text-start">${r.idpel}</td><td class="text-start">${r.nama}</td><td class="text-center">${r.koked}</td><td class="text-end">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
 
