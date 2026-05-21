@@ -11,7 +11,6 @@
 <style>
 body{background:#f4f6f9; font-family: sans-serif;}
 .clickable{cursor:pointer; user-select: none;}
-/* Warna selang-seling kustom agar lebih kontras */
 .table-striped tbody tr:nth-of-type(odd) {
     background-color: rgba(0, 0, 0, 0.03);
 }
@@ -23,10 +22,10 @@ tr:hover{background-color: #eef3ff !important;}
 .card.highlight { border: 2px solid #0d6efd; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .card-body p { margin-bottom: 2px; line-height: 1.2; font-size: 0.85rem; }
 
-/* Tambahan CSS untuk tabel rekap baru (mirip gambar) */
+/* Tambahan CSS untuk tabel rekap */
 .table-rekap th, .table-rekap td {
     vertical-align: middle;
-    text-align: center; /* Default rata tengah untuk tabel rekap */
+    text-align: center;
     white-space: nowrap;
     border: 1px solid #dee2e6;
 }
@@ -55,7 +54,9 @@ tr:hover{background-color: #eef3ff !important;}
 <h4 class="text-center text-primary mb-1">⚡ Rekap Tunggakan & Invoice</h4>
 <h4 class="text-center text-primary mb-2"> ULP Tulung</h4>
 
-<div id="updateInfo" class="text-center text-secondary small mb-3 p-2 bg-white rounded shadow-sm mx-auto" style="max-width: 600px;"></div>
+<div id="updateInfo" class="text-center text-secondary small mb-3 p-2 bg-white rounded shadow-sm mx-auto" style="max-width: 650px;">
+  Memperbarui info sinkronisasi...
+</div>
 
 <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none">⬅ Kembali</button>
 <div id="view"></div>
@@ -80,16 +81,13 @@ const parseIDR = (val) => {
 };
 
 function getStatusLunas(r) {
-  // Ditambahkan pengecekan untuk kolom TGLLUNAS secara eksplisit
-  const valRaw = (r['TGLLUNAS'] || r['tgllunas'] || r['tgl_lunas'] || r['Tgl Lunas'] || r['tgl lunas'] || "").toString().trim();
+  const valRaw = (r['tgl_lunas'] || r['Tgl Lunas'] || r['tgl lunas'] || "").toString().trim();
   const isBelum = valRaw === "" || valRaw === "-" || valRaw === "0" || valRaw.toUpperCase().includes("BELUM");
   return { isLunas: !isBelum, tgl: isBelum ? "BELUM LUNAS" : valRaw };
 }
 
-// FUNGSI UNTUK PARSING TANGGAL
 function parseTgl(tglStr) {
   if (!tglStr) return 0;
-  
   if (!isNaN(tglStr)) return parseInt(tglStr, 10);
 
   const parts = tglStr.split(/[\/\- ]/); 
@@ -98,14 +96,8 @@ function parseTgl(tglStr) {
     let month = parseInt(parts[1], 10) - 1; 
     let year = parseInt(parts[2], 10);
     if (year < 100) year += 2000; 
-    
-    // Jika ada komponen jam/menit (misal: 22/05/2026 14:30)
-    let hour = parts[3] ? parseInt(parts[3], 10) : 0;
-    let minute = parts[4] ? parseInt(parts[4], 10) : 0;
-    
-    return new Date(year, month, day, hour, minute).getTime();
+    return new Date(year, month, day).getTime();
   }
-  
   let d = new Date(tglStr).getTime();
   return isNaN(d) ? 0 : d;
 }
@@ -126,31 +118,25 @@ function loadSheet(k) {
   document.getElementById("tab-" + k).classList.add("active");
   view.innerHTML = "<p class='text-center'>Memuat data...</p>";
   document.getElementById("updateInfo").innerHTML = "Memperbarui info sinkronisasi...";
-  
+
   fetch(SHEETS[k].url).then(r => r.text()).then(csv => {
     allData = Papa.parse(csv, { header: true, skipEmptyLines: true, transformHeader: h => h.trim() }).data;
     
-    // LOGIKA PENCARIAN TANGGAL PELUNASAN TERBARU
-    let tglTerbaru = "-";
-    let maxTime = 0;
-    allData.forEach(r => {
-      let status = getStatusLunas(r);
-      if (status.isLunas) {
-        let t = parseTgl(status.tgl);
-        if (t > maxTime) {
-          maxTime = t;
-          tglTerbaru = status.tgl; // Menyimpan teks asli dari kolom TGLLUNAS yang paling baru
-        }
-      }
-    });
+    // --- BACA DATA METADATA TERAKHIR_UPDATE DARI SHEET ---
+    let waktuUpdate = "Belum Ada Catatan Update";
+    let barisUpdate = allData.find(r => r.TERAKHIR_UPDATE && r.TERAKHIR_UPDATE.trim() !== "");
+    if (barisUpdate) {
+        waktuUpdate = barisUpdate.TERAKHIR_UPDATE;
+    }
 
-    // Menampilkan Info Update ke HTML bagian atas
     const sekarang = new Date();
     const waktuBuka = sekarang.toLocaleTimeString("id-ID", {hour: '2-digit', minute:'2-digit'});
+    
+    // Tampilkan di layar HTML
     document.getElementById("updateInfo").innerHTML = `
-      📅 <b>Pelunasan Terbaru (TGLLUNAS):</b> <span class="text-success fw-bold">${tglTerbaru}</span> 
+      🕒 <b>Sheet Terakhir Diupdate Anda:</b> <span class="text-danger fw-bold">${waktuUpdate} WIB</span> 
       &nbsp;|&nbsp; 
-      🔄 <b>Last Refresh:</b> ${waktuBuka} WIB
+      🔄 <b>Halaman Direfresh:</b> <span class="text-primary">${waktuBuka} WIB</span>
     `;
 
     renderPetugas();
