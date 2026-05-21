@@ -179,9 +179,9 @@ function renderPetugas() {
       <thead style="background-color: #4dd0e1; position: sticky; top: 0; z-index: 2;">
         <tr>
           <th rowspan="2" class="align-middle">NO</th>
-          <th rowspan="2" class="align-middle text-start">KOORDINATOR</th>
-          <th rowspan="2" class="align-middle text-start">KODE</th>
-          <th rowspan="2" class="align-middle freeze-col text-start">PETUGAS</th>
+          <th rowspan="2" class="align-middle">KOORDINATOR</th>
+          <th rowspan="2" class="align-middle">KODE</th>
+          <th rowspan="2" class="align-middle freeze-col">PETUGAS</th>
           <th colspan="2">TOTAL SALDO</th>
           <th colspan="2">SALDO SAAT INI</th>
           <th rowspan="2" class="align-middle">TARGET HARI INI</th>
@@ -190,8 +190,8 @@ function renderPetugas() {
           <th rowspan="2" class="align-middle">TANGGAL NIHIL</th>
         </tr>
         <tr>
-          <th>LEMBAR</th><th class="text-end">RUPIAH</th>
-          <th>LEMBAR</th><th class="text-end">RUPIAH</th>`;
+          <th>LEMBAR</th><th class="text-middle">RUPIAH</th>
+          <th>LEMBAR</th><th class="text-middle">RUPIAH</th>`;
           
   for (let i = startDay; i <= endDay; i++) {
       h += `<th>${i}</th>`;
