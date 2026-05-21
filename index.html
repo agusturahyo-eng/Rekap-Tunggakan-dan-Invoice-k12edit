@@ -209,7 +209,7 @@ function renderPetugas() {
   let sumTotalLbr = 0, sumTotalRp = 0, sumSisaLbr = 0, sumSisaRp = 0;
   let sumHarian = {};
 
-  sorted.forEach(p => { 
+ sorted.forEach(p => { 
     let progress = 0;
     if (p.j_total > 0) {
         progress = Math.round(((p.j_total - p.j_sisa) / p.j_total) * 100);
@@ -220,6 +220,16 @@ function renderPetugas() {
     sumSisaLbr += p.j_sisa;
     sumSisaRp += p.rp_sisa;
 
+    // --- KODE WARNA BARU UNTUK BARIS PETUGAS ---
+    let progBgColor = "";
+    let progTxtColor = "";
+    if (progress >= 0 && progress <= 20) { progBgColor = "black"; progTxtColor = "white"; }
+    else if (progress > 20 && progress <= 60) { progBgColor = "red"; progTxtColor = "white"; }
+    else if (progress > 60 && progress <= 90) { progBgColor = "yellow"; progTxtColor = "black"; }
+    else if (progress > 90 && progress < 100) { progBgColor = "lightblue"; progTxtColor = "black"; }
+    else if (progress >= 100) { progBgColor = "darkblue"; progTxtColor = "white"; }
+    // -------------------------------------------
+
     let rowHtml = `<tr class="clickable" onclick="openPetugas('${p.name}')">
       <td>${no++}</td>
       <td>${p.koordinator}</td>
@@ -227,8 +237,8 @@ function renderPetugas() {
       <td class="text-start freeze-col fw-bold">${p.name}</td>
       <td style="background-color: #fff9c4;">${p.j_total}</td>
       <td class="text-end" style="background-color: #fff9c4;">Rp ${p.rp_total.toLocaleString("id-ID")}</td>
-      <td style="background-color: ${p.j_sisa > 0 ? '#ffcdd2' : '#c8e6c9'};">${p.j_sisa}</td>
-      <td class="text-end" style="background-color: ${p.j_sisa > 0 ? '#ffcdd2' : '#c8e6c9'};">Rp ${p.rp_sisa.toLocaleString("id-ID")}</td>
+      <td style="background-color: ${progBgColor}; color: ${progTxtColor};">${p.j_sisa}</td>
+      <td class="text-end" style="background-color: ${progBgColor}; color: ${progTxtColor};">Rp ${p.rp_sisa.toLocaleString("id-ID")}</td>
       <td>${p.target}</td>`;
 
     for (let i = startDay; i <= endDay; i++) {
@@ -244,26 +254,37 @@ function renderPetugas() {
         rowHtml += `<td class="${colorClass}">${val}</td>`;
     }
 
-    let progColor = progress === 100 ? '#198754' : (progress < 50 ? '#dc3545' : '#ffc107');
     rowHtml += `
-      <td style="background-color: ${progColor}; color: ${progress===100||progress<50?'white':'black'}; font-weight: bold;">${progress}%</td>
+      <td style="background-color: ${progBgColor}; color: ${progTxtColor}; font-weight: bold;">${progress}%</td>
       <td>${p.j_sisa === 0 ? 'NIHIL' : 'BELUM'}</td>
     </tr>`; 
     h += rowHtml;
   });
 
   let totalProgress = Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) || 0;
+
+  // --- KODE WARNA BARU UNTUK BARIS JUMLAH GLOBAL ---
+  let totBgColor = "";
+  let totTxtColor = "";
+  if (totalProgress >= 0 && totalProgress <= 20) { totBgColor = "black"; totTxtColor = "white"; }
+  else if (totalProgress > 20 && totalProgress <= 60) { totBgColor = "red"; totTxtColor = "white"; }
+  else if (totalProgress > 60 && totalProgress <= 90) { totBgColor = "yellow"; totTxtColor = "black"; }
+  else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "lightblue"; totTxtColor = "black"; }
+  else if (totalProgress >= 100) { totBgColor = "darkblue"; totTxtColor = "white"; }
+  // -------------------------------------------------
+
   h += `<tr class="fw-bold" style="background-color: #80deea; cursor: pointer;" onclick="openGlobal()">
       <td colspan="4" class="text-center freeze-col" style="background-color: #80deea;">JUMLAH</td>
       <td>${sumTotalLbr}</td><td class="text-end">Rp ${sumTotalRp.toLocaleString("id-ID")}</td>
-      <td>${sumSisaLbr}</td><td class="text-end">Rp ${sumSisaRp.toLocaleString("id-ID")}</td>
+      <td style="background-color: ${totBgColor}; color: ${totTxtColor};">${sumSisaLbr}</td>
+      <td class="text-end" style="background-color: ${totBgColor}; color: ${totTxtColor};">Rp ${sumSisaRp.toLocaleString("id-ID")}</td>
       <td></td>`;
       
   for (let i = startDay; i <= endDay; i++) {
       h += `<td>${sumHarian[i] || 0}</td>`;
   }
   
-  h += `<td style="background-color: #198754; color: white;">${totalProgress}%</td><td></td></tr>`;
+  h += `<td style="background-color: ${totBgColor}; color: ${totTxtColor};">${totalProgress}%</td><td></td></tr>`;
   view.innerHTML = h + `</tbody></table></div>`;
 }
 
