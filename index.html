@@ -220,13 +220,13 @@ function renderPetugas() {
     if (progress >= 0 && progress <= 20) { progBgColor = "black"; progTxtColor = "white"; }
     else if (progress > 20 && progress <= 60) { progBgColor = "red"; progTxtColor = "white"; }
     else if (progress > 60 && progress <= 90) { progBgColor = "yellow"; progTxtColor = "black"; }
-    else if (progress > 90 && progress < 100) { progBgColor = "lightblue"; progTxtColor = "black"; }
+    else if (progress > 90 && progress < 100) { progBgColor = "green"; progTxtColor = "black"; }
     else if (progress >= 100) { progBgColor = "darkblue"; progTxtColor = "white"; }
 
     let rowHtml = `<tr class="clickable" onclick="openPetugas('${p.name}')">
       <td class="text-center">${no++}</td>
       <td class="text-start">${p.koordinator}</td>
-      <td class="text-start">${p.kode}</td>
+      <td class="text-center">${p.kode}</td>
       <td class="text-start freeze-col fw-bold">${p.name}</td>
       <td class="text-center" style="background-color: #fff9c4;">${p.j_total}</td>
       <td class="text-end" style="background-color: #fff9c4;">Rp ${p.rp_total.toLocaleString("id-ID")}</td>
@@ -262,7 +262,7 @@ function renderPetugas() {
   if (totalProgress >= 0 && totalProgress <= 20) { totBgColor = "black"; totTxtColor = "white"; }
   else if (totalProgress > 20 && totalProgress <= 60) { totBgColor = "red"; totTxtColor = "white"; }
   else if (totalProgress > 60 && totalProgress <= 90) { totBgColor = "yellow"; totTxtColor = "black"; }
-  else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "lightblue"; totTxtColor = "black"; }
+  else if (totalProgress > 90 && totalProgress < 100) { totBgColor = "green"; totTxtColor = "black"; }
   else if (totalProgress >= 100) { totBgColor = "darkblue"; totTxtColor = "white"; }
 
   h += `<tr class="fw-bold" style="background-color: #80deea; cursor: pointer;" onclick="openGlobal()">
